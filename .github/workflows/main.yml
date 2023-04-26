@@ -18,9 +18,11 @@ jobs:
     - name: Get branch name
       id: get_branch
       run: |
-        branch=${${{ github.ref }}#refs/heads/}
+        branch=${GITHUB_REF#refs/heads/}
         echo "branch=$branch" >> $GITHUB_OUTPUT
         echo "prerelease=${branch//\//-}" >> $GITHUB_OUTPUT
+      env:
+        GITHUB_REF: ${{ github.ref }}
     - name: Replace branch name in .releaserc.json
       if: steps.get_branch.outputs.branch != 'main'
       uses: jacobtomlinson/gha-find-replace@master
