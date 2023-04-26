@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <ProjectType>ProgramLibrary</ProjectType>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyTitle>epi.switcher.extron.quantum</AssemblyTitle>
+    <Product>epi.switcher.extron.quantum</Product>
+    <Description></Description>
+    <Copyright>Copyright 2022</Copyright>
+    <Version>2.0.2</Version>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <Authors>PepperDash Technologies</Authors>
+    <PackageId>PepperDash.Essentials.Plugin.ExtronQuantum</PackageId>
+    <PackageProjectUrl>https://github.com/PepperDash/epi-switcher-extron-quantum</PackageProjectUrl>
+    <PackageTags>crestron 4series essentials pepperdash pepperdashessentials epi essentials plugin</PackageTags>
+    <Title>Extron Quantum Essentials Plugin </Title>
+    <RepositoryUrl>https://github.com/PepperDash/epi-switcher-extron-quantum</RepositoryUrl>    
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugType>full</DebugType>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Crestron.SimplSharp.SDK.ProgramLibrary" Version="2.19.53" />
+    <PackageReference Include="PepperDashEssentials" Version="1.13.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+</Project>
