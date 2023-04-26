@@ -52,6 +52,7 @@ jobs:
         name: change-log
         path: CHANGELOG.md
     - name: Print results
+      if: steps.get_version.outputs.newVersion == 'true'
       run: |
         echo "# Summary" >> $GITHUB_STEP_SUMMARY        
         echo "Version: ${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
