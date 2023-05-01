@@ -1,4 +1,4 @@
-# Essentials Plugin Template (c) 2020
+# Essentials Extron Quantum Plugin
 
 ## License
 
@@ -6,20 +6,8 @@ Provided under MIT license
 
 ## Overview
 
-Fork this repo when creating a new plugin for Essentials. For more information about plugins, refer to the Essentials Wiki [Plugins](https://github.com/PepperDash/Essentials/wiki/Plugins) article.
+This plugin controls input switching and preset recall over IP or RS-232 for Extron Quantum Video Wall processors.
 
-This repo contains example classes for the three main categories of devices:
-* `EssentialsPluginTemplateDevice`: Used for most third party devices which require communication over a streaming mechanism such as a Com port, TCP/SSh/UDP socket, CEC, etc
-* `EssentialsPluginTemplateLogicDevice`:  Used for devices that contain logic, but don't require any communication with third parties outside the program
-* `EssentialsPluginTemplateCrestronDevice`:  Used for devices that represent a piece of Crestron hardware
-
-There are matching factory classes for each of the three categories of devices.  The `EssentialsPluginTemplateConfigObject` should be used as a template and modified for any of the categories of device.  Same goes for the `EssentialsPluginTemplateBridgeJoinMap`.
-
-This also illustrates how a plugin can contain multiple devices.
-
-## Cloning Instructions
-
-After forking this repository into your own GitHub space, you can create a new repository using this one as the template.  Then you must install the necessary dependencies as indicated below.
 
 ## Dependencies
 
@@ -27,32 +15,37 @@ The [Essentials](https://github.com/PepperDash/Essentials) libraries are require
 
 ### Installing Dependencies
 
-To install dependencies once nuget.exe is installed, run the following command from the root directory of your repository:
-`nuget install .\packages.config -OutputDirectory .\packages -excludeVersion`.
-Alternatively, you can simply run the `GetPackages.bat` file.
-To verify that the packages installed correctly, open the plugin solution in your repo and make sure that all references are found, then try and build it.
+Dependencies will be installed automatically by Visual Studio on opening. Use the Nuget Package Manager in
+Visual Studio to manage nuget package dependencies. All files will be output to the `output` directory at the root of
+repository.
 
 ### Installing Different versions of PepperDash Core
 
-If you need a different version of PepperDash Core, use the command `nuget install .\packages.config -OutputDirectory .\packages -excludeVersion -Version {versionToGet}`. Omitting the `-Version` option will pull the version indicated in the packages.config file.
+If a different version of PepperDash Core is needed, use the Visual Studio Nuget Package Manager to install the desired
+version.
 
-### Instructions for Renaming Solution and Files
+# Usage
 
-See the Task List in Visual Studio for a guide on how to start using the template.  There is extensive inline documentation and examples as well.
+## Join Map
 
-For renaming instructions in particular, see the XML `remarks` tags on class definitions
+### Digitals
 
-## Build Instructions (PepperDash Internal) 
+| Join Number | JoinSpan | Description | Capabilities |
+| ----------- | -------- | ----------- | ------------ |
+| 1 | 1 | Is Online | To SIMPL |
 
-## Generating Nuget Package 
+### Analogs
 
-In the solution folder is a file named "PDT.EssentialsPluginTemplate.nuspec" 
+| Join Number | JoinSpan | Description | Capabilities |
+| ----------- | -------- | ----------- | ------------ |
+| 1 | 1 | Socket Status | To SIMPL |
+| 2 | 1 | Preset Select. If a canvas is NOT selected, the preset will be recalled on ALL canvases | From SIMPL |
+| 3 | 1 | Canvas select. Valid values are 0 - 10 | To/From SIMPL |
+| 11 | 40 | Input select. Each analog corresponds to a window. Windows are based on canvases. If a Canvas is NOT selected or set to 0, the route will be made to the corresponding window on Canvas 1" | From SIMPL |
 
-1. Rename the file to match your plugin solution name 
-2. Edit the file to include your project specifics including
-    1. <id>PepperDash.Essentials.Plugin.MakeModel</id> Convention is to use the prefix "PepperDash.Essentials.Plugin" and include the MakeModel of the device. 
-    2. <projectUrl>https://github.com/PepperDash/EssentialsPluginTemplate</projectUrl> Change to your url to the project repo
+### Serials
 
-There is no longer a requirement to adjust workflow files for nuget generation for private and public repositories.  This is now handled automatically in the workflow.
-
-__If you do not make these changes to the nuspec file, the project will not generate a nuget package__
+| Join Number | JoinSpan | Description | Capabilities |
+| ----------- | -------- | ----------- | ------------ |
+| 1 | 1 | Device Name. Set from Config | To SIMPL |
+| 11 | 20 | Preset name. Set from Config | To SIMPL |
