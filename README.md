@@ -49,3 +49,52 @@ version.
 | ----------- | -------- | ----------- | ------------ |
 | 1 | 1 | Device Name. Set from Config | To SIMPL |
 | 11 | 20 | Preset name. Set from Config | To SIMPL |
+
+
+## Example Config
+```json
+{
+    "key": "videowall-1",
+    "name": "Extron Quantum",
+    "uid": 1,
+    "group": "switcher",
+    "type": "extronQuantum",
+    "properties": {
+        "control": {
+            "method": "tcpIp",
+            "tcpSshProperties": {
+                "address": "123.123.123.123",
+                "port": 23,
+                "autoReconnect": true,
+                "autoReconnectIntervalMs": 5000
+            }
+        },
+        "inputs": {
+            "input1": {
+                "name": "Input 1",
+                "value": 1
+            },
+            "input2": {
+                "name": "Input 2",
+                "value": 2
+            }
+        },  
+        "windows": {
+            "window1": {
+                "name": "Window 1",
+                "value": 1,
+            },
+            "window2": {
+                "name": "Window 2",
+                "value": 2,
+            }
+        },
+        "presets": {
+            "preset1": "preset1",
+            "preset2": "preset2",
+        }
+    }
+}
+```
+
+> note: Inputs and Windows are used to create ports for Essentials routing to work.
