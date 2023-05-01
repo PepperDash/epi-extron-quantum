@@ -77,34 +77,6 @@ namespace epi.switcher.extron.quantum
         [JsonProperty("errorTimeoutMs")]
         public long ErrorTimeoutMs { get; set; }
 
-        /// <summary>
-        /// Example dictionary of objects
-        /// </summary>
-        /// <remarks>
-        /// This is an example collection configuration object.  This should be modified or deleted as needed for the plugin being built.
-        /// </remarks>
-        /// <example>
-        /// <code>
-        /// "properties": {
-        ///		"presets": {
-        ///			"preset1": {
-        ///				"enabled": true,
-        ///				"name": "Preset 1"
-        ///			}
-        ///		}
-        /// }
-        /// </code>
-        /// </example>
-        /// <example>
-        /// <code>
-        /// "properties": {
-        ///		"inputNames": {
-        ///			"input1": "Input 1",
-        ///			"input2": "Input 2"		
-        ///		}
-        /// }
-        /// </code>
-        /// </example>
         [JsonProperty("inputs")]
         public Dictionary<string, NameValue> Inputs { get; set; }
 
