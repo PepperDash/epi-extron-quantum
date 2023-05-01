@@ -149,12 +149,12 @@ namespace epi.switcher.extron.quantum
 
         private RoutingPortCollection<RoutingInputPort> CreateRoutingInputs(Dictionary<string, NameValue> inputs)
         {
-            return inputs.Select((kv) => new RoutingInputPort(kv.Key, eRoutingSignalType.Video, eRoutingPortConnectionType.Hdmi, kv.Value, this)).ToList() as RoutingPortCollection<RoutingInputPort>;
+            return inputs.Select((kv) => new RoutingInputPort(kv.Key, eRoutingSignalType.Video, eRoutingPortConnectionType.Hdmi, kv.Value.Value, this)).ToList() as RoutingPortCollection<RoutingInputPort>;
         }
 
         private RoutingPortCollection<RoutingOutputPort> CreateRoutingOutputs(Dictionary<string, NameValue> outputs)
         {
-            return outputs.Select((kv) => new RoutingOutputPort(kv.Key, eRoutingSignalType.Video, eRoutingPortConnectionType.Hdmi, kv.Value, this)).ToList() as RoutingPortCollection<RoutingOutputPort>;
+            return outputs.Select((kv) => new RoutingOutputPort(kv.Key, eRoutingSignalType.Video, eRoutingPortConnectionType.Hdmi, kv.Value.Value, this)).ToList() as RoutingPortCollection<RoutingOutputPort>;
         }
 
         public override void Initialize()
