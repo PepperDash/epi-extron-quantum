@@ -1,56 +1,56 @@
 ﻿using PepperDash.Essentials.Core;
 
-namespace EssentialsPluginTemplate
+namespace epi.switcher.extron.quantum
 {
-	/// <summary>
-	/// Plugin device Bridge Join Map
-	/// </summary>
-	/// <remarks>
-	/// Rename the class to match the device plugin being developed.  Reference Essentials JoinMaps, if one exists for the device plugin being developed
-	/// </remarks>
-	/// <see cref="PepperDash.Essentials.Core.Bridges"/>
-	/// <example>
-	/// "EssentialsPluginBridgeJoinMapTemplate" renamed to "SamsungMdcBridgeJoinMap"
-	/// </example>
-	public class ExtronQuantumJoinMap : JoinMapBaseAdvanced
-	{
-		#region Digital
-		
-
-		[JoinName("IsOnline")]
-		public JoinDataComplete IsOnline = new JoinDataComplete(
-			new JoinData
-			{
-				JoinNumber = 1,
-				JoinSpan = 1
-			},
-			new JoinMetadata
-			{
-				Description = "Is Online",
-				JoinCapabilities = eJoinCapabilities.ToSIMPL,
-				JoinType = eJoinType.Digital
-			});		
-
-		#endregion
+    /// <summary>
+    /// Plugin device Bridge Join Map
+    /// </summary>
+    /// <remarks>
+    /// Rename the class to match the device plugin being developed.  Reference Essentials JoinMaps, if one exists for the device plugin being developed
+    /// </remarks>
+    /// <see cref="PepperDash.Essentials.Core.Bridges"/>
+    /// <example>
+    /// "EssentialsPluginBridgeJoinMapTemplate" renamed to "SamsungMdcBridgeJoinMap"
+    /// </example>
+    public class ExtronQuantumJoinMap : JoinMapBaseAdvanced
+    {
+        #region Digital
 
 
-		#region Analog
+        [JoinName("IsOnline")]
+        public JoinDataComplete IsOnline = new JoinDataComplete(
+            new JoinData
+            {
+                JoinNumber = 1,
+                JoinSpan = 1
+            },
+            new JoinMetadata
+            {
+                Description = "Is Online",
+                JoinCapabilities = eJoinCapabilities.ToSIMPL,
+                JoinType = eJoinType.Digital
+            });
 
-		// TODO [ ] Add analog joins below plugin being developed
+        #endregion
 
-		[JoinName("Status")]
-		public JoinDataComplete Status = new JoinDataComplete(
-			new JoinData
-			{
-				JoinNumber = 1,
-				JoinSpan = 1
-			},
-			new JoinMetadata
-			{
-				Description = "Socket Status",
-				JoinCapabilities = eJoinCapabilities.ToSIMPL,
-				JoinType = eJoinType.Analog
-			});
+
+        #region Analog
+
+        // TODO [ ] Add analog joins below plugin being developed
+
+        [JoinName("Status")]
+        public JoinDataComplete Status = new JoinDataComplete(
+            new JoinData
+            {
+                JoinNumber = 1,
+                JoinSpan = 1
+            },
+            new JoinMetadata
+            {
+                Description = "Socket Status",
+                JoinCapabilities = eJoinCapabilities.ToSIMPL,
+                JoinType = eJoinType.Analog
+            });
 
         [JoinName("PresetSelect")]
         public JoinDataComplete PresetSelect = new JoinDataComplete(
@@ -105,17 +105,17 @@ namespace EssentialsPluginTemplate
         // TODO [ ] Add serial joins below plugin being developed
         [JoinName("DeviceName")]
         public JoinDataComplete DeviceName = new JoinDataComplete(
-			new JoinData
-			{
-				JoinNumber = 1,
-				JoinSpan = 1
-			},
-			new JoinMetadata
-			{
-				Description = "Device Name",
-				JoinCapabilities = eJoinCapabilities.ToSIMPL,
-				JoinType = eJoinType.Serial
-			});
+            new JoinData
+            {
+                JoinNumber = 1,
+                JoinSpan = 1
+            },
+            new JoinMetadata
+            {
+                Description = "Device Name",
+                JoinCapabilities = eJoinCapabilities.ToSIMPL,
+                JoinType = eJoinType.Serial
+            });
 
         [JoinName("PresetNames")]
         public JoinDataComplete PresetNames = new JoinDataComplete(
@@ -132,15 +132,15 @@ namespace EssentialsPluginTemplate
                 }
             );
 
-		#endregion
+        #endregion
 
-		/// <summary>
-		/// Plugin device BridgeJoinMap constructor
-		/// </summary>
-		/// <param name="joinStart">This will be the join it starts on the EISC bridge</param>
+        /// <summary>
+        /// Plugin device BridgeJoinMap constructor
+        /// </summary>
+        /// <param name="joinStart">This will be the join it starts on the EISC bridge</param>
         public ExtronQuantumJoinMap(uint joinStart)
             : base(joinStart, typeof(ExtronQuantumJoinMap))
-		{
-		}
-	}
+        {
+        }
+    }
 }
