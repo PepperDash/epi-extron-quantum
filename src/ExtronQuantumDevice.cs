@@ -1,31 +1,29 @@
 ﻿// For Basic SIMPL# Classes
 // For Basic SIMPL#Pro classes
 
-using Crestron.SimplSharpPro.DeviceSupport;
 using Crestron.SimplSharp.CrestronSockets;
+using Crestron.SimplSharpPro.DeviceSupport;
 using PepperDash.Core;
 using PepperDash.Essentials.Core;
 using PepperDash.Essentials.Core.Bridges;
-using PepperDash.Essentials.Core.Queues;
 using PepperDash.Essentials.Core.DeviceInfo;
+using PepperDash.Essentials.Core.Queues;
 using System.Collections.Generic;
 using System.Linq;
-using epi.switcher.extron.quantum;
-using System.Runtime.CompilerServices;
-using Newtonsoft.Json.Linq;
+using System.Timers;
 
-namespace EssentialsPluginTemplate
+namespace epi.switcher.extron.quantum
 {
-	/// <summary>
-	/// Plugin device template for third party devices that use IBasicCommunication
-	/// </summary>
-	/// <remarks>
-	/// Rename the class to match the device plugin being developed.
-	/// </remarks>
-	/// <example>
-	/// "EssentialsPluginDeviceTemplate" renamed to "SamsungMdcDevice"
-	/// </example>
-	public class ExtronQuantumDevice : EssentialsBridgeableDevice, IRouting, ICommunicationMonitor, IDeviceInfoProvider, IRoutingNumeric
+    /// <summary>
+    /// Plugin device template for third party devices that use IBasicCommunication
+    /// </summary>
+    /// <remarks>
+    /// Rename the class to match the device plugin being developed.
+    /// </remarks>
+    /// <example>
+    /// "EssentialsPluginDeviceTemplate" renamed to "SamsungMdcDevice"
+    /// </example>
+    public class ExtronQuantumDevice : EssentialsBridgeableDevice, IRouting, ICommunicationMonitor, IDeviceInfoProvider, IRoutingNumeric
     {
         /// <summary>
         /// It is often desirable to store the config
@@ -40,12 +38,12 @@ namespace EssentialsPluginTemplate
         #region IBasicCommunication Properties and Constructor.  Remove if not needed.
 
         // TODO [ ] Add, modify, remove properties and fields as needed for the plugin being developed
-		private readonly IBasicCommunication _comms;
-		private readonly GenericCommunicationMonitor _commsMonitor;
+        private readonly IBasicCommunication _comms;
+        private readonly GenericCommunicationMonitor _commsMonitor;
 
-		// _comms gather for ASCII based API's
-		// TODO [ ] If not using an ASCII based API, delete the properties below
-		private readonly CommunicationGather _commsGather;
+        // _comms gather for ASCII based API's
+        // TODO [ ] If not using an ASCII based API, delete the properties below
+        private readonly CommunicationGather _commsGather;
 
         /// <summary>
         /// Set this value to that of the delimiter used by the API (if applicable)
@@ -73,31 +71,31 @@ namespace EssentialsPluginTemplate
 
         public IntFeedback SelectedCanvasFeedback { get; private set; }
 
-		/// <summary>
-		/// Connects/disconnects the comms of the plugin device
-		/// </summary>
-		/// <remarks>
-		/// triggers the _comms.Connect/Disconnect as well as thee comms monitor start/stop
-		/// </remarks>
-		public bool Connect
-		{
-			get { return _comms.IsConnected; }
-		}
+        /// <summary>
+        /// Connects/disconnects the comms of the plugin device
+        /// </summary>
+        /// <remarks>
+        /// triggers the _comms.Connect/Disconnect as well as thee comms monitor start/stop
+        /// </remarks>
+        public bool Connect
+        {
+            get { return _comms.IsConnected; }
+        }
 
-		/// <summary>
-		/// Reports connect feedback through the bridge
-		/// </summary>
-		public BoolFeedback ConnectFeedback { get; private set; }
+        /// <summary>
+        /// Reports connect feedback through the bridge
+        /// </summary>
+        public BoolFeedback ConnectFeedback { get; private set; }
 
-		/// <summary>
-		/// Reports online feedback through the bridge
-		/// </summary>
-		public BoolFeedback OnlineFeedback { get; private set; }
+        /// <summary>
+        /// Reports online feedback through the bridge
+        /// </summary>
+        public BoolFeedback OnlineFeedback { get; private set; }
 
-		/// <summary>
-		/// Reports socket status feedback through the bridge
-		/// </summary>
-		public IntFeedback StatusFeedback { get; private set; }
+        /// <summary>
+        /// Reports socket status feedback through the bridge
+        /// </summary>
+        public IntFeedback StatusFeedback { get; private set; }
 
         public RoutingPortCollection<RoutingInputPort> InputPorts { get; private set; }
 
@@ -106,6 +104,7 @@ namespace EssentialsPluginTemplate
         public StatusMonitorBase CommunicationMonitor => _commsMonitor;
 
         private DeviceInfo _deviceInfo;
+        private Timer _deviceInfoTimer;
         public DeviceInfo DeviceInfo => _deviceInfo;
 
         /// <summary>
@@ -116,29 +115,29 @@ namespace EssentialsPluginTemplate
         /// <param name="config"></param>
         /// <param name="comms"></param>
         public ExtronQuantumDevice(string key, string name, ExtronQuantumConfig config, IBasicCommunication comms)
-			: base(key, name)
-		{
-			Debug.Console(0, this, $"Constructing new {name} instance");			
+            : base(key, name)
+        {
+            Debug.Console(0, this, $"Constructing new {name} instance");
 
-			_config = config;
+            _config = config;
 
             ReceiveQueue = new GenericQueue(key + "-rxqueue");
 
-			ConnectFeedback = new BoolFeedback(() => Connect);
-			OnlineFeedback = new BoolFeedback(() => _commsMonitor.IsOnline);
-			StatusFeedback = new IntFeedback(() => (int)_commsMonitor.Status);
+            ConnectFeedback = new BoolFeedback(() => Connect);
+            OnlineFeedback = new BoolFeedback(() => _commsMonitor.IsOnline);
+            StatusFeedback = new IntFeedback(() => (int)_commsMonitor.Status);
 
-			_comms = comms;
-			_commsMonitor = new GenericCommunicationMonitor(this, _comms, _config.PollTimeMs, _config.WarningTimeoutMs, _config.ErrorTimeoutMs, Poll);
+            _comms = comms;
+            _commsMonitor = new GenericCommunicationMonitor(this, _comms, _config.PollTimeMs, _config.WarningTimeoutMs, _config.ErrorTimeoutMs, Poll);
 
             if (_comms is ISocketStatus socket)
             {
                 // device comms is IP **ELSE** device comms is RS232
-                socket.ConnectionChange += Socket_ConnectionChange;                
-            }            
-            
+                socket.ConnectionChange += Socket_ConnectionChange;
+            }
+
             _commsGather = new CommunicationGather(_comms, ReturnDelimiter);
-			_commsGather.LineReceived += Handle_LineReceived;
+            _commsGather.LineReceived += Handle_LineReceived;
 
             SelectedCanvasFeedback = new IntFeedback(() => SelectedCanvas);
 
@@ -150,7 +149,7 @@ namespace EssentialsPluginTemplate
 
         private RoutingPortCollection<RoutingInputPort> CreateRoutingInputs(Dictionary<string, NameValue> inputs)
         {
-            return inputs.Select((kv) => new RoutingInputPort(kv.Key, eRoutingSignalType.Video, eRoutingPortConnectionType.Hdmi, kv.Value, this)).ToList() as RoutingPortCollection<RoutingInputPort>;            
+            return inputs.Select((kv) => new RoutingInputPort(kv.Key, eRoutingSignalType.Video, eRoutingPortConnectionType.Hdmi, kv.Value, this)).ToList() as RoutingPortCollection<RoutingInputPort>;
         }
 
         private RoutingPortCollection<RoutingOutputPort> CreateRoutingOutputs(Dictionary<string, NameValue> outputs)
@@ -165,26 +164,26 @@ namespace EssentialsPluginTemplate
         }
 
         private void Socket_ConnectionChange(object sender, GenericSocketStatusChageEventArgs args)
-		{
-			ConnectFeedback?.FireUpdate();
+        {
+            ConnectFeedback?.FireUpdate();
 
-			StatusFeedback?.FireUpdate();
+            StatusFeedback?.FireUpdate();
 
-            switch(args.Client.ClientStatus)
+            switch (args.Client.ClientStatus)
             {
                 case SocketStatus.SOCKET_STATUS_CONNECTED:
-                {
-                    //Set Ve
-                    SendText("W3CV"); //Set Verbose mode 2
-                    break;
-                }
+                    {
+                        //Set Ve
+                        SendText("W3CV"); //Set Verbose mode 2
+                        break;
+                    }
             }
-		}
+        }
 
-		private void Handle_LineReceived(object sender, GenericCommMethodReceiveTextArgs args)
-		{
+        private void Handle_LineReceived(object sender, GenericCommMethodReceiveTextArgs args)
+        {
             ReceiveQueue.Enqueue(new ProcessStringMessage(args.Text, ProcessFeedbackMessage));
-		}
+        }
 
         /// <summary>
         /// This method should perform any necessary parsing of feedback messages from the device
@@ -194,64 +193,86 @@ namespace EssentialsPluginTemplate
         {
             Debug.Console(2, this, $"Message received: {message}");
 
-            var tokenParams = message.TokenizeParams('*');
-
-            using (var tokens = tokenParams.GetEnumerator())
+            if (message.StartsWith("Bld")) //firmware response
             {
-                var responseType = tokens.Next();
+                var firmware = message.Replace("Bld", "");
 
-                if (responseType.Contains("Ipn"))
+                _deviceInfo.FirmwareVersion = firmware;
+
+                FireDeviceInfoUpdate(_deviceInfo);
+                return;
+            }
+
+            if (message.StartsWith("Ipn")) // hostname
+            {
+                var hostname = message.Replace("Ipn ", "");
+
+                _deviceInfo.HostName = hostname;
+
+                FireDeviceInfoUpdate(_deviceInfo);
+                return;
+            }
+
+            if (message.StartsWith("Cisg")) // IP Info
+            {
+                var tokens = message.TokenizeParams('*');
+
+
+                using (var parameters = tokens.GetEnumerator())
                 {
-                    
+                    parameters.Next(); // throw away 'Cisg 1'
+
+                    var ipAddressSubnetMask = parameters.Next().Split('/');
+
+                    _deviceInfo.IpAddress = ipAddressSubnetMask[0];
+
+                    FireDeviceInfoUpdate(_deviceInfo);
                 }
+                return;
+            }
+
+            if (message.StartsWith("Iph")) // MAC Address
+            {
+                var tokens = message.TokenizeParams('*');
+
+                using (var parameters = tokens.GetEnumerator())
+                {
+                    parameters.Next(); //throw away 'Iph`';
+
+                    var mac = parameters.Next();
+
+                    _deviceInfo.MacAddress = mac;
+
+                    FireDeviceInfoUpdate(_deviceInfo);
+                }
+                return;
             }
 
         }
 
-        private void ParseIpInformation(string ipInfo)
+        /// <summary>
+        /// Sends text to the device plugin comms
+        /// </summary>
+        /// <remarks>
+        /// Can be used to test commands with the device plugin using the DEVPROPS and DEVJSON console commands
+        /// </remarks>
+        /// <param name="text">Command to be sent</param>		
+        public void SendText(string text)
         {
-            var ipInfoTokens = ipInfo.TokenizeParams('/');
+            if (string.IsNullOrEmpty(text)) return;
 
-            using (var ipInfoEnumerator = ipInfoTokens.GetEnumerator())
-            {
-                var interfaceIpInfo = ipInfoEnumerator.Next().Split('*');
-
-                var interfaceNumber = int.Parse(interfaceIpInfo[0]);
-
-                if(interfaceNumber > 1)
-                {
-                    return;
-                }
-
-                _deviceInfo.IpAddress = interfaceIpInfo[1];
-            }
+            _comms.SendText($"{text}{SendDelimiter}");
         }
 
 
-		// TODO [ ] If not using an ACII based API, delete the properties below
-		/// <summary>
-		/// Sends text to the device plugin comms
-		/// </summary>
-		/// <remarks>
-		/// Can be used to test commands with the device plugin using the DEVPROPS and DEVJSON console commands
-		/// </remarks>
-		/// <param name="text">Command to be sent</param>		
-		public void SendText(string text)
-		{
-			if (string.IsNullOrEmpty(text)) return;
-
-			_comms.SendText($"{text}{SendDelimiter}");
-		}
-
-
-		/// <summary>
-		/// Polls the device
-		/// </summary>
-		/// <remarks>
-		/// Poll method is used by the communication monitor.  Update the poll method as needed for the plugin being developed
-		/// </remarks>
-		public void Poll()
-		{
+        /// <summary>
+        /// Polls the device
+        /// </summary>
+        /// <remarks>
+        /// Poll method is used by the communication monitor.  Update the poll method as needed for the plugin being developed
+        /// </remarks>
+        public void Poll()
+        {
             SendText("*Q");
         }
 
@@ -293,7 +314,7 @@ namespace EssentialsPluginTemplate
             trilist.SetString(joinMap.DeviceName.JoinNumber, Name);
 
             var presetOffset = 0;
-            foreach(var presetConfig in _config.Presets)
+            foreach (var presetConfig in _config.Presets)
             {
                 trilist.SetString((uint)(joinMap.PresetNames.JoinNumber + presetOffset), presetConfig.Value);
 
@@ -302,14 +323,14 @@ namespace EssentialsPluginTemplate
 
 
             StatusFeedback.LinkInputSig(trilist.UShortInput[joinMap.Status.JoinNumber]);
-            OnlineFeedback.LinkInputSig(trilist.BooleanInput[joinMap.IsOnline.JoinNumber]);                    
+            OnlineFeedback.LinkInputSig(trilist.BooleanInput[joinMap.IsOnline.JoinNumber]);
 
-            for(int i = 0; i < joinMap.InputSelect.JoinSpan; i += 1)
+            for (int i = 0; i < joinMap.InputSelect.JoinSpan; i += 1)
             {
                 var joinOffset = i;
-                var output = (ushort) (i + 1);
+                var output = (ushort)(i + 1);
 
-                trilist.SetUShortSigAction(joinMap.InputSelect.JoinNumber + (uint) joinOffset, (input) => ExecuteNumericSwitch(input, output, eRoutingSignalType.Video));                
+                trilist.SetUShortSigAction(joinMap.InputSelect.JoinNumber + (uint)joinOffset, (input) => ExecuteNumericSwitch(input, output, eRoutingSignalType.Video));
             }
 
             trilist.SetUShortSigAction(joinMap.PresetSelect.JoinNumber, (preset) => RecallPreset(preset, SelectedCanvas));
@@ -340,18 +361,16 @@ namespace EssentialsPluginTemplate
         #endregion
 
         private void UpdateFeedbacks()
-        {            
+        {
             ConnectFeedback.FireUpdate();
             OnlineFeedback.FireUpdate();
             StatusFeedback.FireUpdate();
             SelectedCanvasFeedback.FireUpdate();
         }
 
-        
-
         public void RecallPreset(int preset, int canvas)
         {
-            if(preset <= 0)
+            if (preset <= 0)
             {
                 Debug.Console(1, this, "Unable to recall preset. Preset 0 is not valid");
                 return;
@@ -377,7 +396,7 @@ namespace EssentialsPluginTemplate
                 return;
             }
 
-            if(canvas > 10)
+            if (canvas > 10)
             {
                 Debug.Console(1, this, "Unable to make switch. Canvas values must be between 0 & 10");
                 return;
@@ -396,6 +415,28 @@ namespace EssentialsPluginTemplate
             SendText("W1CH"); // Get LAN A MAC Address
             SendText("W1CISG"); // Get LAN A IP Information
             SendText("WCN"); // Get Host Name
+        }
+
+        private void FireDeviceInfoUpdate(DeviceInfo deviceInfo)
+        {
+            if (_deviceInfoTimer != null)
+            {
+                _deviceInfoTimer.Stop();
+                _deviceInfoTimer.Dispose();
+                _deviceInfoTimer = null;
+            }
+
+            _deviceInfoTimer = new Timer(1000);
+
+            _deviceInfoTimer.Elapsed += (s, a) =>
+            {
+                DeviceInfoChanged?.Invoke(this, new DeviceInfoEventArgs(deviceInfo));
+                _deviceInfoTimer.Dispose();
+                _deviceInfoTimer = null;
+            };
+
+            _deviceInfoTimer.AutoReset = false;
+            _deviceInfoTimer.Enabled = true;
         }
     }
 }

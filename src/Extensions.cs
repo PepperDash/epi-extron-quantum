@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace epi.switcher.extron.quantum
 {
@@ -11,7 +9,8 @@ namespace epi.switcher.extron.quantum
         public static IEnumerable<string> TokenizeParams(this string s, char separator = ' ')
         {
             var inQuotes = false;
-            return s.Split(c => {
+            return s.Split(c =>
+            {
                 if (c == '\"')
                     inQuotes = !inQuotes;
                 return !inQuotes && c == separator;
@@ -21,7 +20,7 @@ namespace epi.switcher.extron.quantum
         public static IEnumerable<string> Split(this string s, Func<char, bool> controller)
         {
             var n = 0;
-            for(var c = 0; c < s.Length; c++)
+            for (var c = 0; c < s.Length; c++)
             {
                 if (!controller(s[c])) continue;
                 yield return s.Substring(n, c - n);
@@ -37,6 +36,8 @@ namespace epi.switcher.extron.quantum
         public static string Next(this IEnumerator<string> enumerator) => enumerator.MoveNext() ? enumerator.Current.EmptyIfNull() : string.Empty;
 
         public static bool NextEquals(this IEnumerator<string> enumerator, string other, StringComparison comparison) => enumerator.Next().Equals(other, comparison);
-        
+
+        public static bool NextContains(this IEnumerator<string> enumerator, string other) => enumerator.Next().Contains(other);
+
     }
 }
