@@ -164,9 +164,6 @@ namespace epi.switcher.extron.quantum
 
             SelectedCanvasFeedback = new IntFeedback(() => SelectedCanvas);
 
-            InputPorts = new RoutingPortCollection<RoutingInputPort>();
-            OutputPorts = new RoutingPortCollection<RoutingOutputPort>();
-
             InputPorts = CreateRoutingInputs(_config.Inputs);
             OutputPorts = CreateRoutingOutputs(_config.Windows);
 
