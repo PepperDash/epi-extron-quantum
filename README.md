@@ -32,23 +32,23 @@ version.
 
 | Join Number | JoinSpan | Description | Capabilities |
 | ----------- | -------- | ----------- | ------------ |
-| 1 | 1 | Is Online | To SIMPL |
+| 1           | 1        | Is Online   | To SIMPL     |
 
 ### Analogs
 
-| Join Number | JoinSpan | Description | Capabilities |
-| ----------- | -------- | ----------- | ------------ |
-| 1 | 1 | Socket Status | To SIMPL |
-| 2 | 1 | Preset Select. If a canvas is NOT selected, the preset will be recalled on ALL canvases | From SIMPL |
-| 3 | 1 | Canvas select. Valid values are 0 - 10 | To/From SIMPL |
-| 11 | 40 | Input select. Each analog corresponds to a window. Windows are based on canvases. If a Canvas is NOT selected or set to 0, the route will be made to the corresponding window on Canvas 1" | From SIMPL |
+| Join Number | JoinSpan | Description                                                                                                                                                                                                  | Capabilities  |
+| ----------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| 1           | 1        | Socket Status                                                                                                                                                                                                | To SIMPL      |
+| 2           | 1        | Preset Select. If a canvas is NOT selected, the preset will be recalled on ALL canvases                                                                                                                      | From SIMPL    |
+| 3           | 1        | Canvas select. Valid values are 0 - 10                                                                                                                                                                       | To/From SIMPL |
+| 11          | see note | Input select. Each analog corresponds to a window in a canvas. If a Canvas is NOT selected or set to 0, the route will be made on canvas one with no customJoinmap, size is dynamic based on routing outputs | To/From SIMPL |
 
 ### Serials
 
-| Join Number | JoinSpan | Description | Capabilities |
-| ----------- | -------- | ----------- | ------------ |
-| 1 | 1 | Device Name. Set from Config | To SIMPL |
-| 11 | 20 | Preset name. Set from Config | To SIMPL |
+| Join Number | JoinSpan | Description                  | Capabilities |
+| ----------- | -------- | ---------------------------- | ------------ |
+| 1           | 1        | Device Name. Set from Config | To SIMPL     |
+| 11          | 20       | Preset name. Set from Config | To SIMPL     |
 
 
 ## Example Config
@@ -66,9 +66,12 @@ version.
                 "address": "123.123.123.123",
                 "port": 23,
                 "autoReconnect": true,
-                "autoReconnectIntervalMs": 5000
-            }
+                "autoReconnectIntervalMs": 5000,
+                "password" : "admin"
+                            }
         },
+        "staticCanvas" : 1,
+        "staticCanvas.comment" : "sets the default canvas.  If defined, this cannot be changed at runtime",
         "inputs": {
             "input1": {
                 "name": "Input 1",
@@ -91,7 +94,7 @@ version.
         },
         "presets": {
             "preset1": "preset1",
-            "preset2": "preset2",
+            "preset2": "preset2"
         }
     }
 }
