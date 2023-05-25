@@ -36,10 +36,10 @@ namespace epi.switcher.extron.quantum
         public Dictionary<string, NameValue> Inputs { get; set; }
 
         [JsonProperty("windows")]
-        public Dictionary<string, NameValue> Windows { get; set; }
+        public Dictionary<string, WindowData> Windows { get; set; }
 
         [JsonProperty("presets")]
-        public Dictionary<string, string> Presets { get; set; }
+        public Dictionary<string, PresetData> Presets { get; set; }
 
         [JsonProperty("deviceSerialNumber")]
         public string DeviceSerialNumber { get; set; }
@@ -55,8 +55,8 @@ namespace epi.switcher.extron.quantum
         public ExtronQuantumConfig()
         {
             Inputs = new Dictionary<string, NameValue>();
-            Windows = new Dictionary<string, NameValue>();
-            Presets = new Dictionary<string, string>();
+            Windows = new Dictionary<string, WindowData>();
+            Presets = new Dictionary<string, PresetData>();
         }
     }
 
@@ -97,5 +97,35 @@ namespace epi.switcher.extron.quantum
         /// </remarks>
         [JsonProperty("value")]
         public uint Value { get; set; }
+    }
+
+    public class WindowData
+    {
+        [JsonProperty("name")]
+        public string Name { get; set; }
+
+        [JsonProperty("canvas")]
+        public uint Canvas { get; set; }
+
+        [JsonProperty("window")]
+        public uint Window { get; set; }
+
+        [JsonProperty("windowIndex")]
+        public uint WindowIndex { get; set; }
+    }
+
+    public class PresetData
+    {
+        [JsonProperty("name")]
+        public string Name { get; set; }
+
+        [JsonProperty("canvas")]
+        public int Canvas { get; set; }
+        [JsonProperty("canvasPresetNumber")]
+        public int CanvasPresetNumber { get; set; }
+
+        [JsonProperty("presetIndex")]
+        public int PresetIndex { get; set; }
+
     }
 }

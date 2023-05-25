@@ -6,10 +6,12 @@ using Crestron.SimplSharpPro.DeviceSupport;
 using PepperDash.Core;
 using PepperDash.Essentials.Core;
 using PepperDash.Essentials.Core.Bridges;
+using PepperDash.Essentials.Core.Config;
 using PepperDash.Essentials.Core.DeviceInfo;
 using PepperDash.Essentials.Core.Queues;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Timers;
 
 namespace epi.switcher.extron.quantum
@@ -35,7 +37,7 @@ namespace epi.switcher.extron.quantum
         /// </summary>
         private GenericQueue ReceiveQueue;
 
-        private readonly int _staticCanvas;
+        //private readonly int _staticCanvas;
 
         #region IBasicCommunication Properties and Constructor.  Remove if not needed.
 
@@ -55,26 +57,9 @@ namespace epi.switcher.extron.quantum
 
         private const string SendDelimiter = "\r";
 
-        private int _selectedCanvas;
+        //private int _selectedCanvas;
 
         public event DeviceInfoChangeHandler DeviceInfoChanged;
-
-        public int SelectedCanvas
-        {
-            get { return _staticCanvas != 0 ? _staticCanvas : _selectedCanvas; }
-
-            set
-            {
-                if (value == _selectedCanvas) return;
-
-                _selectedCanvas = _staticCanvas != 0 ? _staticCanvas : value;
-
-                SelectedCanvasFeedback.FireUpdate();
-                PollCanvasWindows(_selectedCanvas);
-            }
-        }
-
-        public IntFeedback SelectedCanvasFeedback { get; private set; }
 
         /// <summary>
         /// Connects/disconnects the comms of the plugin device
@@ -102,16 +87,22 @@ namespace epi.switcher.extron.quantum
         /// <summary>
         /// Reports socket status feedback through the bridge
         /// </summary>
-        public IntFeedback StatusFeedback { get; private set; }
 
         public Dictionary<int, IntFeedback> InputFeedbacks { get; private set; }
-        public Dictionary<int, int> InputRoutes { get; private set; }
+        public Dictionary<string, int> InputRoutes { get; private set; }
+
+        public Dictionary<int, IntFeedback> PresetFeedbacks { get; private set; }
+        public Dictionary<int, int> PresetFeedbackData { get; private set; }
+
+        public List<PresetData> PresetList = new List<PresetData>();
 
         public RoutingPortCollection<RoutingInputPort> InputPorts { get; private set; }
 
         public RoutingPortCollection<RoutingOutputPort> OutputPorts { get; private set; }
 
         public StatusMonitorBase CommunicationMonitor => _commsMonitor;
+
+        private int _pollCounter;
 
         private readonly string _adminPassword;
         private DeviceInfo _deviceInfo;
@@ -132,8 +123,6 @@ namespace epi.switcher.extron.quantum
 
             _config = config;
 
-            _staticCanvas = _config.StaticCanvas;
-
             _adminPassword = _config.Control.TcpSshProperties.Password;
 
             _serialNumber = _config.DeviceSerialNumber;
@@ -142,7 +131,6 @@ namespace epi.switcher.extron.quantum
 
             ConnectFeedback = new BoolFeedback(() => Connect);
             OnlineFeedback = new BoolFeedback(() => _commsMonitor.IsOnline);
-            StatusFeedback = new IntFeedback(() => (int)_commsMonitor.Status);
 
             _comms = comms;
             _commsMonitor = new GenericCommunicationMonitor(this,
@@ -162,13 +150,14 @@ namespace epi.switcher.extron.quantum
 
             Debug.Console(0, this, "Built Comms Gather");
 
-            SelectedCanvasFeedback = new IntFeedback(() => SelectedCanvas);
-
             InputPorts = CreateRoutingInputs(_config.Inputs);
             OutputPorts = CreateRoutingOutputs(_config.Windows);
 
-            InputRoutes = new Dictionary<int, int>();
+            InputRoutes = new Dictionary<string, int>();
             InputFeedbacks = new Dictionary<int, IntFeedback>();
+
+            PresetFeedbackData = new Dictionary<int, int>();
+            PresetFeedbacks = new Dictionary<int, IntFeedback>();
 
             foreach (var item in OutputPorts)
             {
@@ -179,10 +168,22 @@ namespace epi.switcher.extron.quantum
                     continue;
                 }
 
-                if (!(outputPort.Selector is uint selector)) continue;
+                if (!(outputPort.Selector is string selector)) continue;
+                var selectorIndex = selector.GetUntil(":");
+                var selectorSubstring = selector.GetAfter(":");
+                if (!int.TryParse(selectorIndex, out var selectorInt)) continue;
                 Debug.Console(0, this, "Selector = {0}", selector);
-                InputRoutes.Add((int)selector, 0);
-                InputFeedbacks.Add((int)selector, new IntFeedback(() => InputRoutes[(int)selector]));
+                InputRoutes.Add(selectorSubstring, 0);
+                InputFeedbacks.Add(selectorInt, new IntFeedback(() => InputRoutes[selectorSubstring]));
+            }
+
+            PresetList = _config.Presets.Select(kvp => kvp.Value).ToList();
+
+            for (int i = 0; i < 10; i++)
+            {
+                var iterator = i + 1;
+                PresetFeedbackData.Add(iterator, 0);
+                PresetFeedbacks.Add(iterator, new IntFeedback(() => PresetFeedbackData[iterator]));
             }
 
             _deviceInfo = new DeviceInfo();
@@ -198,12 +199,12 @@ namespace epi.switcher.extron.quantum
             return newInputs;
         }
 
-        private RoutingPortCollection<RoutingOutputPort> CreateRoutingOutputs(Dictionary<string, NameValue> outputs)
+        private RoutingPortCollection<RoutingOutputPort> CreateRoutingOutputs(Dictionary<string, WindowData> outputs)
         {
             RoutingPortCollection<RoutingOutputPort> newOutputs = new RoutingPortCollection<RoutingOutputPort>();
             foreach (var item in outputs)
             {
-                newOutputs.Add(new RoutingOutputPort(item.Key, eRoutingSignalType.Video, eRoutingPortConnectionType.Hdmi, item.Value.Value, this));
+                newOutputs.Add(new RoutingOutputPort(item.Key, eRoutingSignalType.Video, eRoutingPortConnectionType.Hdmi, $"{item.Value.WindowIndex}:{item.Value.Canvas}:{item.Value.Window}", this));
             }
             return newOutputs;
         }
@@ -211,7 +212,7 @@ namespace epi.switcher.extron.quantum
         public override void Initialize()
         {
             Debug.Console(0, this, "Initialize");
-            if(!String.IsNullOrEmpty(_serialNumber))
+            if (!String.IsNullOrEmpty(_serialNumber))
                 _deviceInfo.SerialNumber = _serialNumber;
             _comms.Connect();
         }
@@ -220,15 +221,10 @@ namespace epi.switcher.extron.quantum
         {
             ConnectFeedback?.FireUpdate();
 
-            StatusFeedback?.FireUpdate();
-
             switch (args.Client.ClientStatus)
             {
                 case SocketStatus.SOCKET_STATUS_CONNECTED:
                     {
-                        //Set Ve
-                        //SendText("W3CV"); //Set Verbose mode 2
-                        //SendText(_adminPassword);
                         break;
                     }
             }
@@ -247,7 +243,7 @@ namespace epi.switcher.extron.quantum
         {
             Debug.Console(2, this, $"Message received: {message}");
 
-            if (message.IndexOf("login administrator", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            if (message.IndexOf("login administrator", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 SendText(_adminPassword);
                 return;
@@ -259,14 +255,14 @@ namespace epi.switcher.extron.quantum
                 return;
             }
 
-            if (message.StartsWith("vrb3", System.StringComparison.OrdinalIgnoreCase))
+            if (message.StartsWith("vrb3", StringComparison.OrdinalIgnoreCase))
             {
                 _commsMonitor.Start();
-                PollCanvasWindows(_selectedCanvas);
+                //PollCanvasWindows(_selectedCanvas);
                 return;
             }
 
-            if (message.StartsWith("bld", System.StringComparison.OrdinalIgnoreCase)) //firmware response
+            if (message.StartsWith("bld", StringComparison.OrdinalIgnoreCase)) //firmware response
             {
                 var firmware = message.Replace("Bld", "");
 
@@ -276,7 +272,7 @@ namespace epi.switcher.extron.quantum
                 return;
             }
 
-            if (message.StartsWith("ipn", System.StringComparison.OrdinalIgnoreCase)) // hostname
+            if (message.StartsWith("ipn", StringComparison.OrdinalIgnoreCase)) // hostname
             {
                 var hostname = message.Replace("Ipn ", "");
 
@@ -286,7 +282,7 @@ namespace epi.switcher.extron.quantum
                 return;
             }
 
-            if (message.StartsWith("cisg", System.StringComparison.OrdinalIgnoreCase)) // IP Info
+            if (message.StartsWith("cisg", StringComparison.OrdinalIgnoreCase)) // IP Info
             {
                 var tokens = message.TokenizeParams('*');
 
@@ -303,7 +299,7 @@ namespace epi.switcher.extron.quantum
                 return;
             }
 
-            if (message.StartsWith("iph", System.StringComparison.OrdinalIgnoreCase)) // MAC Address
+            if (message.StartsWith("iph", StringComparison.OrdinalIgnoreCase)) // MAC Address
             {
                 var tokens = message.TokenizeParams('*');
 
@@ -320,18 +316,68 @@ namespace epi.switcher.extron.quantum
                 return;
             }
 
-            if (message.StartsWith("grp", System.StringComparison.OrdinalIgnoreCase)) // Input Route
+            if (message.StartsWith("grp", StringComparison.OrdinalIgnoreCase)) // Input Route
             {
                 var tokens = message.TokenizeParams(' ');
                 using (var parameters = tokens.GetEnumerator())
                 {
-                    var canvas = uint.Parse(parameters.Next().Substring("Grp".Length));
-                    if (canvas != _selectedCanvas) return;
-                    var window = int.Parse(parameters.Next().Substring("Win".Length));
-                    InputRoutes[window] = int.Parse(parameters.Next().Substring("In".Length));
-                    InputFeedbacks[window].FireUpdate();
+                    var canvas = parameters.Next().Substring("Grp".Length).TrimStart('0');
+                    //if (canvas != _selectedCanvas) return;
+                    var window = parameters.Next().Substring("Win".Length).TrimStart('0');
+                    var input = parameters.Next().Substring("In".Length).TrimStart('0');
+                    InputRoutes[$"{canvas}:{window}"] = String.IsNullOrEmpty(input) ? 0 : int.Parse(input);
                 }
+                FireInputFeedbacks();
                 return;
+            }
+            if (message.StartsWith("prstl1", StringComparison.OrdinalIgnoreCase))
+            {
+                var tokens = message.TokenizeParams('*');
+                using (var parameters = tokens.GetEnumerator())
+                {
+                    parameters.Next(); //throw away 'PrstL1*'
+                    var canvas = parameters.Next();
+                    var preset = parameters.Next();
+                    var canvasInt = int.Parse(canvas);
+
+                    PresetFeedbackData[canvasInt] = int.Parse(preset);
+                    PresetFeedbacks[canvasInt].FireUpdate();
+                }
+                FirePresetFeedbacks();
+                return;
+            }
+            if (message.StartsWith("1rpr", StringComparison.OrdinalIgnoreCase))
+            {
+                var tokens = message.TokenizeParams('*');
+                using (var parameters = tokens.GetEnumerator())
+                {
+                    var canvas = parameters.Next().Substring("1rpr".Length);
+                    var preset = parameters.Next();
+                    var canvasInt = int.Parse(canvas);
+
+                    PresetFeedbackData[canvasInt] = int.Parse(preset);
+                    PresetFeedbacks[canvasInt].FireUpdate();
+                }
+                FirePresetFeedbacks();
+                return;
+            }
+        }
+
+        private void FireInputFeedbacks()
+        {
+            foreach (var item in InputFeedbacks)
+            {
+                var input = item.Value;
+                input.FireUpdate();
+            }
+        }
+
+        private void FirePresetFeedbacks()
+        {
+            foreach (var item in PresetFeedbacks)
+            {
+                var fb = item.Value;
+                fb.FireUpdate();
             }
         }
 
@@ -357,7 +403,18 @@ namespace epi.switcher.extron.quantum
         /// </remarks>
         public void Poll()
         {
-            SendText("*Q");
+            switch (_pollCounter)
+            {
+                case 10:
+                    PollLastPreset();
+                    break;
+
+                default:
+                    SendText("*Q");
+                    break;
+            }
+            _pollCounter++;
+            if (_pollCounter > 10) _pollCounter = 0;
         }
 
         #endregion IBasicCommunication Properties and Constructor.  Remove if not needed.
@@ -390,51 +447,49 @@ namespace epi.switcher.extron.quantum
             }
 
             Debug.Console(1, "Linking to Trilist '{0}'", trilist.ID.ToString("X"));
-            Debug.Console(0, "Linking to Bridge Type {0}", GetType().Name);
 
             trilist.SetString(joinMap.DeviceName.JoinNumber, Name);
 
-            StatusFeedback.LinkInputSig(trilist.UShortInput[joinMap.Status.JoinNumber]);
             OnlineFeedback.LinkInputSig(trilist.BooleanInput[joinMap.IsOnline.JoinNumber]);
-
             if (customJoins == null)
             {
+
                 Debug.Console(0, this, "No Custom Joins Found - Linking Output Ports");
                 foreach (var item in OutputPorts)
                 {
                     var port = item;
-                    var output = (uint)port.Selector;
+                    //var output = (uint)port.Selector;
 
+
+                    if (!(port.Selector is string selector)) continue;
+                    var output = selector.GetUntil(":");
+                    if (!int.TryParse(output, out int outputInt)) continue;
                     if (!joinMap.Joins.TryGetValue($"Output-{output}", out JoinDataComplete switchJoin)) continue;
 
-                    trilist.SetUShortSigAction(switchJoin.JoinNumber, (input) => ExecuteNumericSwitch(input, (ushort)output, eRoutingSignalType.Video));
-                    if (!InputFeedbacks.TryGetValue((int)output, out IntFeedback inputFeedback)) continue;
+                    trilist.SetUShortSigAction(switchJoin.JoinNumber, (input) => ExecuteNumericSwitch(input, (ushort)outputInt, eRoutingSignalType.Video));
+                    if (!InputFeedbacks.TryGetValue(outputInt, out IntFeedback inputFeedback)) continue;
                     inputFeedback.LinkInputSig(trilist.UShortInput[switchJoin.JoinNumber]);
-                }
-                Debug.Console(0, this, "No Custom Joins Found - Linking Presets");
+                    
 
-                var presetTracker = 1;
+                }
+                Debug.Console(1, this, "No Custom JoinMap Found - Linking Presets");
+
                 foreach (var item in _config.Presets)
                 {
-                    var presetConfig = item;
+                    var preset = item.Value;
 
-                    if (!joinMap.Joins.TryGetValue($"PresetSelect-{presetTracker}", out JoinDataComplete presetJoin)) continue;
-                    trilist.SetString((joinMap.PresetNames.JoinNumber), presetConfig.Value);
-
-                    presetTracker += 1;
+                    if (!joinMap.Joins.TryGetValue($"PresetName-{preset.PresetIndex}", out JoinDataComplete presetJoin)) continue;
+                    trilist.SetString(joinMap.PresetNames.JoinNumber, preset.Name);
                 }
             }
             else
             {
-                var presetOffset = 0;
                 foreach (var presetConfig in _config.Presets)
                 {
-                    trilist.SetString((uint)(joinMap.PresetNames.JoinNumber + presetOffset), presetConfig.Value);
-
-                    presetOffset += 1;
+                    trilist.SetString((uint)(joinMap.PresetNames.JoinNumber + presetConfig.Value.PresetIndex), presetConfig.Value.Name);
                 }
 
-                for (int i = 0; i < joinMap.InputSelect.JoinSpan; i += 1)
+                for (int i = 0; i < joinMap.InputSelect.JoinSpan; i++)
                 {
                     var joinOffset = i;
                     var output = (ushort)(i + 1);
@@ -442,13 +497,20 @@ namespace epi.switcher.extron.quantum
                     trilist.SetUShortSigAction(joinMap.InputSelect.JoinNumber + (uint)joinOffset, (input) => ExecuteNumericSwitch(input, output, eRoutingSignalType.Video));
                 }
             }
+            for (int i = 0; i < joinMap.PresetSelect.JoinSpan; i++)
+            {
+                var iterator = i + 1;
+                PresetFeedbacks[iterator].LinkInputSig(trilist.UShortInput[(uint)(joinMap.PresetSelect.JoinNumber + i)]);
+                trilist.SetUShortSigAction((uint)(joinMap.PresetSelect.JoinNumber + i), (a) => RecallPreset(a, iterator));
+            }
 
             trilist.SetUShortSigAction(joinMap.PresetSelect.JoinNumber, (preset) => RecallPreset(preset));
 
-            trilist.SetUShortSigAction(joinMap.CanvasSelect.JoinNumber, (canvas) => SelectedCanvas = canvas);
-            SelectedCanvasFeedback.LinkInputSig(trilist.UShortInput[joinMap.CanvasSelect.JoinNumber]);
+            //trilist.SetUShortSigAction(joinMap.CanvasSelect.JoinNumber, (canvas) => SelectedCanvas = canvas);
+            //SelectedCanvasFeedback.LinkInputSig(trilist.UShortInput[joinMap.CanvasSelect.JoinNumber]);
 
             UpdateFeedbacks();
+
 
             trilist.OnlineStatusChange += (o, a) => {
                 if (!a.DeviceOnLine) return;
@@ -456,15 +518,29 @@ namespace epi.switcher.extron.quantum
                 trilist.SetString(joinMap.DeviceName.JoinNumber, Name);
 
                 var offset = 0;
-                foreach (var presetConfig in _config.Presets)
+                if (customJoins != null)
                 {
-                    trilist.SetString((uint)(joinMap.PresetNames.JoinNumber + offset), presetConfig.Value);
+                    foreach (var preset in PresetList)
+                    {
+                        trilist.SetString((uint)(joinMap.PresetNames.JoinNumber + offset), preset.Name);
 
-                    offset += 1;
+                        offset += 1;
+                    }
+                }
+                else
+                {
+                    foreach (var item in _config.Presets)
+                    {
+                        var preset = item.Value;
+
+                        if (!joinMap.Joins.TryGetValue($"PresetSelect-{preset.PresetIndex}", out JoinDataComplete presetJoin)) continue;
+                        trilist.SetString((joinMap.PresetNames.JoinNumber), preset.Name);
+                    }
                 }
                 UpdateFeedbacks();
             };
         }
+
 
         #endregion Overrides of EssentialsBridgeableDevice
 
@@ -472,9 +548,8 @@ namespace epi.switcher.extron.quantum
         {
             ConnectFeedback.FireUpdate();
             OnlineFeedback.FireUpdate();
-            StatusFeedback.FireUpdate();
-            SelectedCanvasFeedback.FireUpdate();
-            PollCanvasWindows(_selectedCanvas);
+            PollWindows();
+            PollLastPreset();
         }
 
         public void RecallPreset(int preset, int canvas)
@@ -485,21 +560,50 @@ namespace epi.switcher.extron.quantum
                 return;
             }
 
-            SendText($"1*{preset}*{canvas}.");
+            SendText($"1*{canvas}*{preset}.");
         }
 
         public void RecallPreset(int preset)
         {
-            var canvas = _selectedCanvas < 0 ? 0 : _selectedCanvas;
+            var selectedPreset = PresetList.FirstOrDefault(p => p.PresetIndex == preset);
 
-            RecallPreset(preset, canvas);
+            if (selectedPreset == null) return;
+
+            RecallPreset(selectedPreset.CanvasPresetNumber, selectedPreset.Canvas);
+        }
+
+        private void PollWindows()
+        {
+            foreach (var outputPort in OutputPorts)
+            {
+                GetOutputRoute(outputPort);
+            }
+        }
+
+        private void PollLastPreset()
+        {
+            const string esc = "\u001B";
+            const string cr = "\u000D";
+            for (int i = 0; i < 10; i++)
+            {
+                SendText($"{esc}L1*{i + 1}PRST{cr}");
+            }
         }
 
         public void ExecuteSwitch(object inputSelector, object outputSelector, eRoutingSignalType signalType)
         {
-            var canvas = _selectedCanvas <= 0 ? 1 : _selectedCanvas;
+            //var canvas = _selectedCanvas <= 0 ? 1 : _selectedCanvas;
+            if (!(outputSelector is string selectorFull))
+            {
+                Debug.Console(1, this, "Invalid Output Selector");
+                return;
+            }
+            var selector = selectorFull.GetAfter(":");
+            if (string.IsNullOrEmpty(selector)) return;
+            if (!uint.TryParse(selector.GetUntil(":"), out uint canvas)) return;
+            if (!uint.TryParse(selector.GetAfter(":"), out uint window)) return;
 
-            if ((ushort)outputSelector == 0)
+            if ((ushort)window == 0)
             {
                 Debug.Console(1, this, "Unable to make switch. Window 0 is not valid");
                 return;
@@ -511,25 +615,35 @@ namespace epi.switcher.extron.quantum
                 return;
             }
 
-            SendText($"{canvas}*{outputSelector}*{inputSelector}!");
+            SendText($"{canvas}*{window}*{inputSelector}!");
         }
 
         public void ExecuteNumericSwitch(ushort input, ushort output, eRoutingSignalType type)
         {
-            ExecuteSwitch(input, output, type);
-        }
-
-        private void PollCanvasWindows(int canvas)
-        {
-            foreach (var outputPort in OutputPorts)
+            var outputPortSelected = OutputPorts.FirstOrDefault(o => ushort.Parse(((string)o.Selector).GetUntil(":")) == output);
+            if (outputPortSelected == null)
             {
-                GetOutputRoute(outputPort, canvas);
+                Debug.Console(1, this, $"Invalid output selection {output}");
+                return;
             }
+            var selector = outputPortSelected.Selector;
+            ExecuteSwitch(input, selector, type);
         }
 
-        private void GetOutputRoute(RoutingOutputPort port, int canvas)
+        private void GetOutputRoute(RoutingOutputPort port)
         {
-            SendText($"{canvas}*{(uint)port.Selector}!");
+            var outputSelector = port.Selector;
+            if (!(outputSelector is string selectorFull))
+            {
+                Debug.Console(1, this, "Invalid Output Selector");
+                return;
+            }
+            var selector = selectorFull.GetAfter(":");
+            if (string.IsNullOrEmpty(selector)) return;
+            if (!uint.TryParse(selector.GetUntil(":"), out uint canvas)) return;
+            if (!uint.TryParse(selector.GetAfter(":"), out uint window)) return;
+
+            SendText($"{canvas}*{window}!");
         }
 
         public void UpdateDeviceInfo()

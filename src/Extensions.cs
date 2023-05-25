@@ -39,5 +39,20 @@ namespace epi.switcher.extron.quantum
 
         public static bool NextContains(this IEnumerator<string> enumerator, string other) => enumerator.Next().Contains(other);
 
+        public static string GetUntil(this string text, string stopAt)
+        {
+            if (String.IsNullOrEmpty(text)) return String.Empty;
+            var charLocation = text.IndexOf(stopAt, StringComparison.Ordinal);
+            if (charLocation > 0) return text.Substring(0, charLocation);
+            return text;
+        }
+        public static string GetAfter(this string text, string stopAt)
+        {
+            if (String.IsNullOrEmpty(text)) return String.Empty;
+            var charLocation = text.IndexOf(stopAt, StringComparison.Ordinal);
+            if (charLocation > 0) return text.Substring(charLocation + 1, text.Length - charLocation - 1);
+            return text;
+        }
+
     }
 }
