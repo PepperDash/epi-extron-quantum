@@ -249,6 +249,12 @@ namespace epi.switcher.extron.quantum
                 return;
             }
 
+            if (message.IndexOf("password:", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                SendText(_adminPassword);
+                return;
+            }
+
             if (message.IndexOf("60-") >= 0)
             {
                 SendText("W3CV");
