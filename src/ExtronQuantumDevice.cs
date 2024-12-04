@@ -36,6 +36,7 @@ namespace epi.switcher.extron.quantum
         /// Provides a queue and dedicated worker thread for processing feedback messages from a device.
         /// </summary>
         private GenericQueue ReceiveQueue;
+        private GenericQueue CommandQueue;
 
         //private readonly int _staticCanvas;
 
@@ -128,6 +129,7 @@ namespace epi.switcher.extron.quantum
             _serialNumber = _config.DeviceSerialNumber;
 
             ReceiveQueue = new GenericQueue(key + "-rxqueue");
+            CommandQueue = new GenericQueue(key + "-txqueue");
 
             ConnectFeedback = new BoolFeedback(() => Connect);
             OnlineFeedback = new BoolFeedback(() => _commsMonitor.IsOnline);
@@ -139,6 +141,7 @@ namespace epi.switcher.extron.quantum
                 _config.ErrorTimeoutMs > 5000 ? _config.ErrorTimeoutMs : 180000,
                 Poll);
             Debug.Console(0, this, "Built Comms Monitor");
+            Debug.Console(3, this, "Comms Monitor {0}", _commsMonitor.Status);
 
             if (_comms is ISocketStatus socket)
             {
@@ -187,6 +190,7 @@ namespace epi.switcher.extron.quantum
             }
 
             _deviceInfo = new DeviceInfo();
+
         }
 
         private RoutingPortCollection<RoutingInputPort> CreateRoutingInputs(Dictionary<string, NameValue> inputs)
@@ -270,9 +274,24 @@ namespace epi.switcher.extron.quantum
 
             if (message.StartsWith("bld", StringComparison.OrdinalIgnoreCase)) //firmware response
             {
+                if(message == null)
+                {
+                    Debug.Console(2, this, "Message null");
+                }
+                Debug.Console(2, this, $"Checking Starts with bld: {message}");
                 var firmware = message.Replace("Bld", "");
 
+                if (firmware == null)
+                    Debug.Console(2, this, "firmware null");
+
+                if (_deviceInfo == null)
+                    Debug.Console(2, this, "_deviceInfo null");
+
                 _deviceInfo.FirmwareVersion = firmware;
+
+                if (_deviceInfo.FirmwareVersion == null)
+                    Debug.Console(2, this, "_deviceInfo.FirmwareVersion null");
+
 
                 FireDeviceInfoUpdate(_deviceInfo);
                 return;
@@ -367,6 +386,8 @@ namespace epi.switcher.extron.quantum
                 FirePresetFeedbacks();
                 return;
             }
+
+            OnlineFeedback.FireUpdate();
         }
 
         private void FireInputFeedbacks()
@@ -621,7 +642,8 @@ namespace epi.switcher.extron.quantum
                 return;
             }
 
-            SendText($"{canvas}*{window}*{inputSelector}!");
+            //SendText($"{canvas}*{window}*{inputSelector}!");
+            CommandQueue.Enqueue(new ProcessStringMessage($"{canvas}*{window}*{inputSelector}!", SendText));
         }
 
         public void ExecuteNumericSwitch(ushort input, ushort output, eRoutingSignalType type)
