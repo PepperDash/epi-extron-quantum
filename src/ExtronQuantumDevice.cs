@@ -92,6 +92,9 @@ namespace epi.switcher.extron.quantum
         public Dictionary<int, IntFeedback> InputFeedbacks { get; private set; }
         public Dictionary<string, int> InputRoutes { get; private set; }
 
+        public Dictionary<string, bool> WindowMuteStates { get; private set; }
+        public Dictionary<int, BoolFeedback> WindowMuteFeedbacks { get; private set; }
+
         public Dictionary<int, IntFeedback> PresetFeedbacks { get; private set; }
         public Dictionary<int, int> PresetFeedbackData { get; private set; }
 
@@ -159,6 +162,9 @@ namespace epi.switcher.extron.quantum
             InputRoutes = new Dictionary<string, int>();
             InputFeedbacks = new Dictionary<int, IntFeedback>();
 
+            WindowMuteStates = new Dictionary<string, bool>();
+            WindowMuteFeedbacks = new Dictionary<int, BoolFeedback>();
+
             PresetFeedbackData = new Dictionary<int, int>();
             PresetFeedbacks = new Dictionary<int, IntFeedback>();
 
@@ -178,6 +184,8 @@ namespace epi.switcher.extron.quantum
                 Debug.Console(0, this, "Selector = {0}", selector);
                 InputRoutes.Add(selectorSubstring, 0);
                 InputFeedbacks.Add(selectorInt, new IntFeedback(() => InputRoutes[selectorSubstring]));
+                WindowMuteStates.Add(selectorSubstring, false);
+                WindowMuteFeedbacks.Add(selectorInt, new BoolFeedback(() => WindowMuteStates[selectorSubstring]));
             }
 
             PresetList = _config.Presets.Select(kvp => kvp.Value).ToList();
@@ -355,6 +363,29 @@ namespace epi.switcher.extron.quantum
                 FireInputFeedbacks();
                 return;
             }
+
+            if (message.StartsWith("vmt", StringComparison.OrdinalIgnoreCase)) // Window Mute
+            {
+                var tokens = message.TokenizeParams('*');
+                using (var parameters = tokens.GetEnumerator())
+                {
+                    var canvas = parameters.Next().Substring("Vmt".Length).TrimStart('0');
+                    var window = parameters.Next().TrimStart('0');
+                    var muteState = parameters.Next().TrimStart('0');
+                    
+                    var key = $"{canvas}:{window}";
+                    var isMuted = muteState == "1";
+                    
+                    if (WindowMuteStates.ContainsKey(key))
+                    {
+                        WindowMuteStates[key] = isMuted;
+                        Debug.Console(2, this, $"Window mute state updated: Canvas {canvas}, Window {window}, Muted: {isMuted}");
+                    }
+                }
+                FireWindowMuteFeedbacks();
+                return;
+            }
+
             if (message.StartsWith("prstl1", StringComparison.OrdinalIgnoreCase))
             {
                 var tokens = message.TokenizeParams('*');
@@ -396,6 +427,15 @@ namespace epi.switcher.extron.quantum
             {
                 var input = item.Value;
                 input.FireUpdate();
+            }
+        }
+
+        private void FireWindowMuteFeedbacks()
+        {
+            foreach (var item in WindowMuteFeedbacks)
+            {
+                var fb = item.Value;
+                fb.FireUpdate();
             }
         }
 
@@ -496,6 +536,24 @@ namespace epi.switcher.extron.quantum
                     trilist.SetUShortSigAction(switchJoin.JoinNumber, (input) => ExecuteNumericSwitch(input, (ushort)outputInt, eRoutingSignalType.Video));
                     if (!InputFeedbacks.TryGetValue(outputInt, out IntFeedback inputFeedback)) continue;
                     inputFeedback.LinkInputSig(trilist.UShortInput[switchJoin.JoinNumber]);
+
+                    // Link window mute joins
+                    if (!joinMap.Joins.TryGetValue($"WindowMute-{output}", out JoinDataComplete muteJoin)) continue;
+                    
+                    var selectorSubstring = selector.GetAfter(":");
+                    if (!uint.TryParse(selectorSubstring.GetUntil(":"), out uint canvas)) continue;
+                    if (!uint.TryParse(selectorSubstring.GetAfter(":"), out uint window)) continue;
+
+                    trilist.SetBoolSigAction(muteJoin.JoinNumber, (muteState) =>
+                    {
+                        if (muteState)
+                            MuteWindow(canvas, window);
+                        else
+                            UnmuteWindow(canvas, window);
+                    });
+
+                    if (!WindowMuteFeedbacks.TryGetValue(outputInt, out BoolFeedback muteFeedback)) continue;
+                    muteFeedback.LinkInputSig(trilist.BooleanInput[muteJoin.JoinNumber]);
                     
 
                 }
@@ -576,6 +634,7 @@ namespace epi.switcher.extron.quantum
             ConnectFeedback.FireUpdate();
             OnlineFeedback.FireUpdate();
             PollWindows();
+            PollWindowMuteStates();
             PollLastPreset();
         }
 
@@ -604,6 +663,20 @@ namespace epi.switcher.extron.quantum
             foreach (var outputPort in OutputPorts)
             {
                 GetOutputRoute(outputPort);
+            }
+        }
+
+        private void PollWindowMuteStates()
+        {
+            foreach (var outputPort in OutputPorts)
+            {
+                if (!(outputPort.Selector is string selector)) continue;
+                var selectorSubstring = selector.GetAfter(":");
+                if (string.IsNullOrEmpty(selectorSubstring)) continue;
+                if (!uint.TryParse(selectorSubstring.GetUntil(":"), out uint canvas)) continue;
+                if (!uint.TryParse(selectorSubstring.GetAfter(":"), out uint window)) continue;
+
+                SendText($"{canvas}*{window} B");
             }
         }
 
@@ -644,6 +717,42 @@ namespace epi.switcher.extron.quantum
 
             //SendText($"{canvas}*{window}*{inputSelector}!");
             CommandQueue.Enqueue(new ProcessStringMessage($"{canvas}*{window}*{inputSelector}!", SendText));
+        }
+
+        public void MuteWindow(uint canvas, uint window)
+        {
+            if (window == 0)
+            {
+                Debug.Console(1, this, "Unable to mute window. Window 0 is not valid");
+                return;
+            }
+
+            if (canvas > 20)
+            {
+                Debug.Console(1, this, "Unable to mute window. Canvas values must be between 1 & 20");
+                return;
+            }
+
+            Debug.Console(1, this, $"Muting window {window} on canvas {canvas}");
+            CommandQueue.Enqueue(new ProcessStringMessage($"{canvas}*{window}*1B", SendText));
+        }
+
+        public void UnmuteWindow(uint canvas, uint window)
+        {
+            if (window == 0)
+            {
+                Debug.Console(1, this, "Unable to unmute window. Window 0 is not valid");
+                return;
+            }
+
+            if (canvas > 20)
+            {
+                Debug.Console(1, this, "Unable to unmute window. Canvas values must be between 1 & 20");
+                return;
+            }
+
+            Debug.Console(1, this, $"Unmuting window {window} on canvas {canvas}");
+            CommandQueue.Enqueue(new ProcessStringMessage($"{canvas}*{window}*0B", SendText));
         }
 
         public void ExecuteNumericSwitch(ushort input, ushort output, eRoutingSignalType type)

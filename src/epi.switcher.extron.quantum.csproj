@@ -33,6 +33,6 @@
     <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
-    <None Remove="../output\epi.switcher.extron.quantum.2.0.2.cplz" />
+    <None Remove="output\epi.switcher.extron.quantum.2.0.2.cplz" />
   </ItemGroup>
 </Project>

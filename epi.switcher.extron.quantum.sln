@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.33516.290
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "epi.switcher.extron.quantum", "epi.switcher.extron.quantum.csproj", "{4B46DE7C-EEBD-4D29-8A60-279B12847490}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "epi.switcher.extron.quantum", "src\epi.switcher.extron.quantum.csproj", "{4B46DE7C-EEBD-4D29-8A60-279B12847490}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
