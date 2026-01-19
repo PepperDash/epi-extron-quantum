@@ -8,7 +8,6 @@
     <Product>epi.switcher.extron.quantum</Product>
     <Description></Description>
     <Copyright>Copyright 2022</Copyright>
-    <Version>2.0.2</Version>
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <Authors>PepperDash Technologies</Authors>
     <PackageId>PepperDash.Essentials.Plugin.ExtronQuantum</PackageId>
@@ -27,9 +26,6 @@
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Net.Http" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Remove="output\epi.switcher.extron.quantum.2.0.2.cplz" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="PepperDashEssentials" Version="2.24.4" />
