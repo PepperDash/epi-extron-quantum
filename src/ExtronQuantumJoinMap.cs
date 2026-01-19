@@ -19,15 +19,32 @@ namespace epi.switcher.extron.quantum
 
         [JoinName("IsOnline")]
         public JoinDataComplete IsOnline = new JoinDataComplete(
-            new JoinData {
+            new JoinData
+            {
                 JoinNumber = 1,
                 JoinSpan = 1
             },
-            new JoinMetadata {
+            new JoinMetadata
+            {
                 Description = "Is Online",
                 JoinCapabilities = eJoinCapabilities.ToSIMPL,
                 JoinType = eJoinType.Digital
             });
+
+        [JoinName("WindowMute")]
+        public JoinDataComplete WindowMute = new JoinDataComplete(
+            new JoinData
+            {
+                JoinNumber = 10,
+                JoinSpan = 1,
+            },
+            new JoinMetadata
+            {
+                Description = "Window Mute for a window. High = Mute (invisible), Low = Unmute (visible)",
+                JoinCapabilities = eJoinCapabilities.ToFromSIMPL,
+                JoinType = eJoinType.Digital
+            }
+        );
 
         #endregion Digital
 
@@ -35,44 +52,21 @@ namespace epi.switcher.extron.quantum
 
         // TODO [ ] Add analog joins below plugin being developed
 
-        [JoinName("CanvasSelect")]
-        public JoinDataComplete CanvasSelect = new JoinDataComplete(
-                new JoinData {
-                    JoinNumber = 3,
-                    JoinSpan = 1,
-                },
-                new JoinMetadata {
-                    Description = "Select a canvas for routing & preset recall. 0 recalls preset on all canvases. 0 is not valid for routing purposes",
-                    JoinCapabilities = eJoinCapabilities.ToFromSIMPL,
-                    JoinType = eJoinType.Analog
-                }
-            );
-
         [JoinName("PresetSelect")]
         public JoinDataComplete PresetSelect = new JoinDataComplete(
-               new JoinData {
-                   JoinNumber = 2,
-                   JoinSpan = 1,
+               new JoinData
+               {
+                   JoinNumber = 1,
+                   JoinSpan = 10,
                },
-               new JoinMetadata {
-                   Description = "Preset selection for selected canvas. If no Canvas is selected, canvas 1 is assumed",
-                   JoinCapabilities = eJoinCapabilities.FromSIMPL,
+               new JoinMetadata
+               {
+                   Description = "Preset selection per canvas",
+                   JoinCapabilities = eJoinCapabilities.ToFromSIMPL,
                    JoinType = eJoinType.Analog
                }
             );
 
-        [JoinName("Status")]
-        public JoinDataComplete Status = new JoinDataComplete(
-            new JoinData {
-                JoinNumber = 1,
-                JoinSpan = 1
-            },
-            new JoinMetadata {
-                Description = "Socket Status",
-                JoinCapabilities = eJoinCapabilities.ToSIMPL,
-                JoinType = eJoinType.Analog
-            });
-        
         [JoinName("InputSelect")]
         public JoinDataComplete InputSelect = new JoinDataComplete(
             new JoinData
@@ -87,7 +81,7 @@ namespace epi.switcher.extron.quantum
                 JoinType = eJoinType.Analog
             }
         );
-        
+
 
         #endregion Analog
 
@@ -96,11 +90,13 @@ namespace epi.switcher.extron.quantum
         // TODO [ ] Add serial joins below plugin being developed
         [JoinName("DeviceName")]
         public JoinDataComplete DeviceName = new JoinDataComplete(
-            new JoinData {
+            new JoinData
+            {
                 JoinNumber = 1,
                 JoinSpan = 1
             },
-            new JoinMetadata {
+            new JoinMetadata
+            {
                 Description = "Device Name",
                 JoinCapabilities = eJoinCapabilities.ToSIMPL,
                 JoinType = eJoinType.Serial
@@ -108,11 +104,13 @@ namespace epi.switcher.extron.quantum
 
         [JoinName("PresetNames")]
         public JoinDataComplete PresetNames = new JoinDataComplete(
-                new JoinData {
+                new JoinData
+                {
                     JoinNumber = 11,
                     JoinSpan = 20,
                 },
-                new JoinMetadata {
+                new JoinMetadata
+                {
                     Description = "Preset name",
                     JoinCapabilities = eJoinCapabilities.FromSIMPL,
                     JoinType = eJoinType.Serial
@@ -125,48 +123,69 @@ namespace epi.switcher.extron.quantum
         /// Plugin device BridgeJoinMap constructor
         /// </summary>
         /// <param name="joinStart">This will be the join it starts on the EISC bridge</param>
-        public ExtronQuantumJoinMap(uint joinStart, RoutingPortCollection<RoutingOutputPort> outputPorts, Dictionary<string, string> presets)
+        public ExtronQuantumJoinMap(uint joinStart, RoutingPortCollection<RoutingOutputPort> outputPorts, Dictionary<string, PresetData> presets)
             : base(joinStart, typeof(ExtronQuantumJoinMap))
         {
             foreach (var item in outputPorts)
             {
                 var port = item;
+
+                if (!(port.Selector is string windowIndexString)) continue;
+                if (!uint.TryParse(windowIndexString.GetUntil(":"), out uint windowIndex)) continue;
+
                 var join = new JoinDataComplete(
-                    new JoinData {
-                        JoinNumber = (uint)port.Selector + 10 + joinStart - 1,
+                    new JoinData
+                    {
+                        JoinNumber = windowIndex + 10 + joinStart - 1,
                         JoinSpan = 1
                     },
-                    new JoinMetadata {
-                        Description = $"Input Select for window{(uint)port.Selector}. Canvas value needs to be set first, or canvas 1 is assumed",
+                    new JoinMetadata
+                    {
+                        Description = $"Input Select for window{windowIndex}.",
                         JoinCapabilities = eJoinCapabilities.ToFromSIMPL,
                         JoinType = eJoinType.Analog
                     });
-                Joins.Add($"Output-{(uint)port.Selector}", join);
-            }
+                Joins.Add($"Output-{windowIndex}", join);
 
-            var presetTracker = 1;
-            foreach (var item in presets)
-            {
-                var preset = item;
-                var nameJoin = new JoinDataComplete(
-                    new JoinData {
-                        JoinNumber = (uint)presetTracker + 10 + joinStart - 1,
+                var muteJoin = new JoinDataComplete(
+                    new JoinData
+                    {
+                        JoinNumber = windowIndex + 10 + joinStart - 1,
                         JoinSpan = 1
                     },
-                    new JoinMetadata {
-                        Description = $"Preset-{presetTracker} Name",
+                    new JoinMetadata
+                    {
+                        Description = $"Window Mute for window{windowIndex}. High = Mute (invisible), Low = Unmute (visible)",
+                        JoinCapabilities = eJoinCapabilities.ToFromSIMPL,
+                        JoinType = eJoinType.Digital
+                    });
+                Joins.Add($"WindowMute-{windowIndex}", muteJoin);
+            }
+
+            foreach (var item in presets)
+            {
+                var preset = item.Value;
+                var nameJoin = new JoinDataComplete(
+                    new JoinData
+                    {
+                        JoinNumber = (uint)(preset.PresetIndex + 10 + joinStart - 1),
+                        JoinSpan = 1
+                    },
+                    new JoinMetadata
+                    {
+                        Description = $"Preset-{preset.PresetIndex} Name",
                         JoinCapabilities = eJoinCapabilities.ToSIMPL,
                         JoinType = eJoinType.Serial
                     });
-                Joins.Add($"PresetName-{(uint)presetTracker}", nameJoin);
-                presetTracker += 1;
+
+                Joins.Add($"PresetName-{preset.PresetIndex}", nameJoin);
             }
             Joins.Remove("InputSelect");
+            Joins.Remove("WindowMute");
             Joins.Remove("PresetNames");
-            }
-
+        }
         public ExtronQuantumJoinMap(uint joinStart)
-            : base(joinStart, typeof(ExtronQuantumJoinMap))
+    : base(joinStart, typeof(ExtronQuantumJoinMap))
         {
         }
     }

@@ -8,7 +8,6 @@
     <Product>epi.switcher.extron.quantum</Product>
     <Description></Description>
     <Copyright>Copyright 2022</Copyright>
-    <Version>2.0.2</Version>
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <Authors>PepperDash Technologies</Authors>
     <PackageId>PepperDash.Essentials.Plugin.ExtronQuantum</PackageId>
@@ -24,15 +23,13 @@
     <DebugType>pdbonly</DebugType>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Crestron.SimplSharp.SDK.ProgramLibrary" Version="2.19.53" />
-    <PackageReference Include="PepperDashEssentials" Version="1.13.4" />
-  </ItemGroup>
-  <ItemGroup>
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
-    <None Remove="../output\epi.switcher.extron.quantum.2.0.2.cplz" />
+    <PackageReference Include="PepperDashEssentials" Version="2.24.4" >
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 </Project>
