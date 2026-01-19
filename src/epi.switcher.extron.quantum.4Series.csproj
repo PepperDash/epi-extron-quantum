@@ -24,15 +24,14 @@
     <DebugType>pdbonly</DebugType>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Crestron.SimplSharp.SDK.ProgramLibrary" Version="2.19.53" />
-    <PackageReference Include="PepperDashEssentials" Version="1.13.4" />
-  </ItemGroup>
-  <ItemGroup>
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Net.Http" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="output\epi.switcher.extron.quantum.2.0.2.cplz" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="PepperDashEssentials" Version="2.24.4" />
   </ItemGroup>
 </Project>
