@@ -101,3 +101,119 @@ version.
 ```
 
 > note: Inputs and Windows are used to create ports for Essentials routing to work.
+<!-- START Minimum Essentials Framework Versions -->
+### Minimum Essentials Framework Versions
+
+- 1.13.3
+<!-- END Minimum Essentials Framework Versions -->
+<!-- START Config Example -->
+### Config Example
+
+```json
+{
+    "key": "GeneratedKey",
+    "uid": 1,
+    "name": "GeneratedName",
+    "type": "extronQuantum",
+    "group": "Group",
+    "properties": {
+        "control": "SampleValue",
+        "pollTimeMs": 0,
+        "warningTimeoutMs": 0,
+        "errorTimeoutMs": 0,
+        "staticCanvas": 0,
+        "inputs": {
+            "SampleString": {
+                "name": "SampleString",
+                "value": "SampleValue"
+            }
+        },
+        "windows": {
+            "SampleString": {
+                "name": "SampleString",
+                "canvas": "SampleValue",
+                "window": "SampleValue",
+                "windowIndex": "SampleValue"
+            }
+        },
+        "presets": {
+            "SampleString": {
+                "name": "SampleString",
+                "canvas": 0,
+                "canvasPresetNumber": 0,
+                "presetIndex": 0
+            }
+        },
+        "deviceSerialNumber": "SampleString"
+    }
+}
+```
+<!-- END Config Example -->
+<!-- START Supported Types -->
+### Supported Types
+
+- extronQuantum
+<!-- END Supported Types -->
+<!-- START Join Maps -->
+### Join Maps
+
+#### Digitals
+
+| Join | Type (RW) | Description |
+| --- | --- | --- |
+| 1 | R | Is Online |
+| 10 | R | Window Mute for a window. High = Mute (invisible), Low = Unmute (visible) |
+
+#### Analogs
+
+| Join | Type (RW) | Description |
+| --- | --- | --- |
+| 1 | R | Preset selection per canvas |
+| 10 | R | Input Select for a window. Canvas value needs to be set first, or canvas 1 is assumed |
+
+#### Serials
+
+| Join | Type (RW) | Description |
+| --- | --- | --- |
+| 1 | R | Device Name |
+| 11 | R | Preset name |
+<!-- END Join Maps -->
+<!-- START Interfaces Implemented -->
+### Interfaces Implemented
+
+- IRouting
+- ICommunicationMonitor
+- IDeviceInfoProvider
+- IRoutingNumeric
+<!-- END Interfaces Implemented -->
+<!-- START Base Classes -->
+### Base Classes
+
+- EssentialsBridgeableDevice
+- JoinMapBaseAdvanced
+<!-- END Base Classes -->
+<!-- START Public Methods -->
+### Public Methods
+
+- public void SendText(string text)
+- public void Poll()
+- public void RecallPreset(int preset, int canvas)
+- public void RecallPreset(int preset)
+- public void ExecuteSwitch(object inputSelector, object outputSelector, eRoutingSignalType signalType)
+- public void MuteWindow(uint canvas, uint window)
+- public void UnmuteWindow(uint canvas, uint window)
+- public void ExecuteNumericSwitch(ushort input, ushort output, eRoutingSignalType type)
+- public void UpdateDeviceInfo()
+<!-- END Public Methods -->
+<!-- START Bool Feedbacks -->
+### Bool Feedbacks
+
+- ConnectFeedback
+- OnlineFeedback
+<!-- END Bool Feedbacks -->
+<!-- START Int Feedbacks -->
+
+<!-- END Int Feedbacks -->
+<!-- START String Feedbacks -->
+
+<!-- END String Feedbacks -->
